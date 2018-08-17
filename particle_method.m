@@ -78,6 +78,7 @@ else
     end
 end
 end
+neighbors=neighbors
 %% Solve PDE
 for i=1:nt
 for p=1:nx
