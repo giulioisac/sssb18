@@ -1,0 +1,96 @@
+%% Initialize
+%N-# of partc
+nx=300;               %Number of steps in space(x)
+nt=100;               %Number of time steps 
+dt=0.01;              %Width of each time step
+t=0:dt:dt*nt;
+length=1;
+Gconst=40;
+dx=length/(nx-1);         %Width of space step
+x=0:dx:length; 
+x_0=0:dx:length;
+eps=4*dx;
+D=0.0001; 
+temp=0;
+w = zeros(nx,nt);
+u = zeros(nx,nt);
+V=zeros(1,nx); 
+step=10
+for p=1:nx
+    u(p,1)=normpdf(x(p),0.5,0.05)/10;
+    u_0(p,1)=normpdf(x(p),0.5,0.05);
+end
+temp=0;
+V(:)=1;%/nx;
+
+for i=1:nx
+    w(i,1)=u(i,1)*V(i);
+end
+
+%% compute neighbors
+neighbors=zeros(nx,2*Gconst+1);
+
+for p=1:nx
+    a1=mod((p-1-Gconst),nx)+1;
+    b1=mod(p-1+Gconst,nx)+1;
+    i=0;
+    if(a1<b1)
+        for q=a1:b1
+            neighbors(p,i+1)=q;
+            i=i+1;
+        end
+    else
+        for q=a1:nx
+           neighbors(p,i+1)=q;
+           i=i+1;
+        end
+        for q=1:b1
+            neighbors(p,i+1)=q;
+            i=i+1;
+        end
+    end
+end
+%% compute distance matrix
+a=dist_particles(x(1),x(100),length,Gconst,dx);
+%% Solve PDE
+temp=0;
+for i=1:nt
+    for p=1:nx
+        for q=neighbors(p,:)
+                temp=temp+(w(q,i)-w(p,i))*normpdf(dist_particles(x(p),x(q),length,Gconst,dx),0,2*eps);%(w(q,i)-w(p,i)
+        end
+        w(p,i+1)=w(p,i)+dt*V(p)*D/(eps^2)*temp;
+        x(p)=mod(x(p)+step*dx,length);
+        % compute function
+        u(p,i+1)= w(p,i+1)*V(p);
+        temp=0;
+        
+        %recompute  neighbors?
+    end
+end
+%% Substitute solution
+% temp=0;
+% for i=1:nt
+%     for p=1:nx
+%         for q=neighbors(p,:)
+%             u(p,i)=u(p,i)+w(q,i)*normpdf(dist_particles(x(p),x(q),length,Gconst,dx),0,2*eps);
+%         end
+%     end
+%  end
+%% Compute exact solution
+   yexact = zeros(nx,nt);
+   for i=1
+        for p=1:nx
+            for j=0
+                yexact(p,i)=yexact(p,i)+normpdf(x(p),0.5,0.05)/1000;
+            end
+        end
+   end
+%% Plot
+    for i=1:nt 
+        h=scatter(0:dx:length,u(:,i),5,'r');
+        axis([0 1.01 0 1]);
+        title({['1-D Diffusion with \nu =',num2str(D),' time(\itt) = ',num2str(i)]});
+        drawnow; 
+        refreshdata(h);
+    end
