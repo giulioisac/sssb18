@@ -1,24 +1,24 @@
 %% Initialize variables
 %N-# of partc
-nx=200;               %Number of steps in space(x)
-nt=500;               %Number of time steps 
+nx=300;               %Number of steps in space(x)
+nt=250;               %Number of time steps 
 dt=0.01;              %Width of each time step
 t=0:dt:dt*nt;
 length=1;
-Gconst=5;
+Gconst=60;
 dx=length/(nx-1);         %Width of space step
 x1=0:dx:length;  % A
 x2=0:dx:length;  % B
 eps=4*dx;
-D=0.1; 
-temp=0;
+D=0.01; 
+
 w1 = zeros(nx,nt);
 w2 = zeros(nx,nt);
 u1 = zeros(nx,nt);
 u2 = zeros(nx,nt);
 V1=zeros(1,nx); 
 V2=zeros(1,nx);
-step=2;
+step=10;
 V_cyto= 2.5*10^(4);
 S_cyto= 4.4*10^(3);
 N_A=2.4*10^(5);
@@ -38,6 +38,7 @@ for p=1:nx
 u1(p,1)=normpdf(x1(p),0.25,0.05);
 u2(p,1)=normpdf(x2(p),0.75,0.05);
 end
+
 temp1=0;
 temp2=0;
 V1(:)=1.0/nx;
@@ -46,8 +47,7 @@ for i=1:nx
 w1(i,1)=u1(i,1)*V1(i);
 w2(i,1)=u2(i,1)*V2(i);
 end
-%%
-dist_particles(x1(1),x1(200),length,Gconst,dx);
+
 %%
 distance_matrix=zeros(nx,nx);
 for i=1:nx
@@ -55,7 +55,7 @@ for i=1:nx
         distance_matrix(i,j)=dist_particles(x1(i),x1(j),length,Gconst,dx);
     end
 end
-        %% compute neighbors (you will need to change this)
+%% compute neighbors (you will need to change this)
 neighbors=zeros(nx,2*Gconst+1);
 
 for p=1:nx
@@ -78,12 +78,9 @@ else
     end
 end
 end
-neighbors=neighbors
 %% Solve PDE
 for i=1:nt
 for p=1:nx
-    x1(p)=mod(x1(p)-step*dx,length);
-    x2(p)=mod(x2(p)-step*dx,length);
     for q=neighbors(p,:)
             % evolve diffusion
             temp1=temp1+(w1(q,i)-w1(p,i))*normpdf(dist_particles(x1(p),x1(q),length,Gconst,dx),0,2*eps);%(w(q,i)-w(p,i)
@@ -94,7 +91,9 @@ for p=1:nx
     end
     w1(p,i+1)=w1(p,i)+dt*V1(p)*D/(eps^2)*temp1;
     w2(p,i+1)=w2(p,i)+dt*V2(p)*D/(eps^2)*temp2;
-
+    
+    x1(p)=mod(x1(p)+step*dx,length);
+    x2(p)=mod(x2(p)+step*dx,length);
 
     % compute function
     u1(p,i+1)= w1(p,i+1)/V1(p);
@@ -107,13 +106,17 @@ end
 end
 
 %% Plot
-for i=1:nt 
+h = figure;
+for i=1:nt
     h1=scatter(0:dx:length,u2(:,i));
     hold on;
     h2=scatter(0:dx:length,u1(:,i));
     axis([0 1 0 10]);
     title({['1-D Diffusion with \nu =',num2str(D),' time(\itt) = ',num2str(i)]});
     drawnow; 
+    frame = getframe(h); 
+    temp=['./Desktop/Università/Anno_5/Summer_Schools/Dresden/fig',num2str(i),'.png']; 
+    saveas(h,temp) 
     refreshdata(h1);
     refreshdata(h2);
     hold off;

@@ -1,0 +1,118 @@
+%% Initialize variables
+%N-# of partc
+nx=300;               %Number of steps in space(x)
+nt=100;               %Number of time steps 
+dt=0.01;              %Width of each time step
+t=0:dt:dt*nt;
+length=1;
+Gconst=60;
+dx=length/(nx-1);         %Width of space step
+x1=0:dx:length;  % A
+x2=0:dx:length;  % B
+eps=4*dx;
+D=0.01; 
+
+w1 = zeros(nx,nt);
+w2 = zeros(nx,nt);
+u1 = zeros(nx,nt);
+u2 = zeros(nx,nt);
+V1=zeros(1,nx); 
+V2=zeros(1,nx);
+step=0;
+V_cyto= 2.5*10^(4);
+S_cyto= 4.4*10^(3);
+N_A=2.4*10^(5);
+N_P= 9.8*10^(4);
+k_offA=3.24*10^(-3);
+k_offP=7.19*10^(-3);
+k_onA=6.29*10^(-3)*S_cyto/V_cyto;
+k_onP=7.682*10^(-2);
+alpha = 2;
+beta = 2;
+k_AP = 0.01*(S_cyto/V_cyto)^(2 + 2*alpha);
+k_PA = 0.01*(S_cyto/V_cyto)^(2 + 2*beta);
+
+%% Initialize concentration
+% for A
+for p=1:nx
+u1(p,1)=normpdf(x1(p),0.25,0.05);
+u2(p,1)=normpdf(x2(p),0.75,0.05);
+end
+
+temp1=0;
+temp2=0;
+V1(:)=1.0/nx;
+V2(:)=1.0/nx;
+for i=1:nx
+w1(i,1)=u1(i,1)*V1(i);
+w2(i,1)=u2(i,1)*V2(i);
+end
+
+%%
+distance_matrix=zeros(nx,nx);
+for i=1:nx
+    for j=1:nx
+        distance_matrix(i,j)=dist_particles(x1(i),x1(j),length,Gconst,dx);
+    end
+end
+%% compute neighbors (you will need to change this)
+neighbors=zeros(nx,2*Gconst+1);
+
+for p=1:nx
+a1=mod((p-1-Gconst),nx)+1;
+b1=mod(p-1+Gconst,nx)+1;
+i=0;
+if(a1<b1)
+    for q=a1:b1
+        neighbors(p,i+1)=q;
+        i=i+1;
+    end
+else
+    for q=a1:nx
+       neighbors(p,i+1)=q;
+       i=i+1;
+    end
+    for q=1:b1
+        neighbors(p,i+1)=q;
+        i=i+1;
+    end
+end
+end
+%% Solve PDE
+for i=1:nt
+for p=1:nx
+   x1(p)=mod(x1(p)+step*dx,length);
+   x2(p)=mod(x2(p)+step*dx,length);
+   for q=neighbors(p,:)
+           % evolve diffusion
+           temp1=temp1+(w1(q,i)-w1(p,i))*normpdf(dist_particles(x1(p),x1(q),length,Gconst,dx),0,2*eps);
+           temp2=temp2+(w2(q,i)-w2(p,i))*normpdf(dist_particles(x2(p),x2(q),length,Gconst,dx),0,2*eps);
+           % add reaction term
+   end
+   C1= -(k_offA+k_onA)*w1(p,i)-k_AP*w1(p,i)*(w2(p,i))^alpha+K_onA;
+   C2= -(k_offP+k_onP)*w2(p,i)-k_PA*w2(p,i)*(w1(p,i))^beta+K_onP;
+   
+   w1(p,i+1)=w1(p,i)+dt*V1(p)*D/(eps^2)*temp1 +dt*C1;
+   w2(p,i+1)=w2(p,i)+dt*V2(p)*D/(eps^2)*temp2+ dt*C2/70.;    % compute function
+   u1(p,i+1)= w1(p,i+1)/V1(p);
+   u2(p,i+1)= w2(p,i+1)/V2(p);    temp1=0;
+   temp2=0;
+   %recompute  neighbors?
+end
+end 
+%% Plot
+h = figure;
+for i=1:nt
+    h1=scatter(0:dx:length,u2(:,i));
+    hold on;
+    h2=scatter(0:dx:length,u1(:,i));
+    %axis([0 1 0 10]);
+    title({['1-D Diffusion with \nu =',num2str(D),' time(\itt) = ',num2str(i)]});
+    drawnow; 
+    %frame = getframe(h); 
+    %temp=['./Desktop/Università/Anno_5/Summer_Schools/Dresden/fig',num2str(i),'.png']; 
+    %saveas(h,temp) 
+    refreshdata(h1);
+    refreshdata(h2);
+    hold off;
+end

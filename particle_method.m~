@@ -1,14 +1,14 @@
 %% Initialize variables
 %N-# of partc
 nx=200;               %Number of steps in space(x)
-nt=500;               %Number of time steps 
+nt=50;               %Number of time steps 
 dt=0.01;              %Width of each time step
 t=0:dt:dt*nt;
 length=1;
 Gconst=5;
-dx=length/(nx-1);         %Width of space step
-x1=0:dx:length;  % A
-x2=0:dx:length;  % B
+dx=length/nx;         %Width of space step
+x1=0:dx:length-dx;  % A
+x2=0:dx:length-dx;  % B
 eps=4*dx;
 D=0.1; 
 temp=0;
@@ -46,12 +46,15 @@ for i=1:nx
 w1(i,1)=u1(i,1)*V1(i);
 w2(i,1)=u2(i,1)*V2(i);
 end
+
 %%
-distance_matrix(nx,nx);
+distance_matrix=zeros(nx,nx);
 for i=1:nx
     for j=1:nx
-        distance_matrix(i,j)=dist_particles(x1(p),x1(q),length,Gconst,dx)
-%% compute neighbors (you will need to change this)
+        distance_matrix(i,j)=dist_particles(x1(i),x1(j),length,Gconst,dx);
+    end
+end
+        %% compute neighbors (you will need to change this)
 neighbors=zeros(nx,2*Gconst+1);
 
 for p=1:nx
@@ -77,8 +80,6 @@ end
 %% Solve PDE
 for i=1:nt
 for p=1:nx
-    x1(p)=mod(x1(p)-step*dx,length);
-    x2(p)=mod(x2(p)+step*dx,length);
     for q=neighbors(p,:)
             % evolve diffusion
             temp1=temp1+(w1(q,i)-w1(p,i))*normpdf(dist_particles(x1(p),x1(q),length,Gconst,dx),0,2*eps);%(w(q,i)-w(p,i)
@@ -89,7 +90,9 @@ for p=1:nx
     end
     w1(p,i+1)=w1(p,i)+dt*V1(p)*D/(eps^2)*temp1;
     w2(p,i+1)=w2(p,i)+dt*V2(p)*D/(eps^2)*temp2;
-
+    
+    x1(p)=mod(x1(p)+step*dx,length);
+    x2(p)=mod(x2(p)+step*dx,length);
 
     % compute function
     u1(p,i+1)= w1(p,i+1)/V1(p);
@@ -102,13 +105,27 @@ end
 end
 
 %% Plot
-for i=1:nt 
-    h1=scatter(0:dx:length,u2(:,i));
+h = figure;
+axis tight manual; % this ensures that getframe() returns a consistent size
+filename = 'testAnimated.gif';
+for i=1:nt
+    h1=scatter(0:dx:length-dx,u2(:,i));
     hold on;
-    h2=scatter(0:dx:length,u1(:,i));
+    h2=scatter(0:dx:length-dx,u1(:,i));
     axis([0 1 0 10]);
     title({['1-D Diffusion with \nu =',num2str(D),' time(\itt) = ',num2str(i)]});
     drawnow; 
+    frame = getframe(h); 
+    im = frame2im(frame); 
+     [imind,cm] = rgb2ind(im,256); 
+
+      % Write to the GIF File 
+      if n == 1 
+          imwrite(imind,cm,filename,'gif', 'Loopcount',inf); 
+      else 
+          imwrite(imind,cm,filename,'gif','WriteMode','append'); 
+      end 
+    %saveas(figure1,'finename.ext') 
     refreshdata(h1);
     refreshdata(h2);
     hold off;
